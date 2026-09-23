@@ -100,21 +100,12 @@
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
             // Освещение
-            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
             scene.add(ambientLight);
 
-            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            const dirLight = new THREE.DirectionalLight(0xffffff, 1.0);
             dirLight.position.set(100, 150, 50);
             dirLight.castShadow = true;
-            dirLight.shadow.mapSize.width = 2048;
-            dirLight.shadow.mapSize.height = 2048;
-            dirLight.shadow.camera.near = 10;
-            dirLight.shadow.camera.far = 400;
-            const d = 100;
-            dirLight.shadow.camera.left = -d;
-            dirLight.shadow.camera.right = d;
-            dirLight.shadow.camera.top = d;
-            dirLight.shadow.camera.bottom = -d;
             scene.add(dirLight);
 
             // 2. Физика
@@ -141,7 +132,6 @@
         }
 
         function createTrack() {
-            // Земля
             const groundMat = new CANNON.Material('groundMaterial');
             const groundBody = new CANNON.Body({ mass: 0, material: groundMat });
             groundBody.addShape(new CANNON.Plane());
@@ -156,7 +146,6 @@
             groundMesh.receiveShadow = true;
             scene.add(groundMesh);
 
-            // Трасса
             const trackPoints = [
                 new THREE.Vector3(-100, 0, -100),
                 new THREE.Vector3(100, 0, -100),
@@ -243,17 +232,42 @@
         function loadCarModel() {
             const loader = new THREE.FBXLoader();
             loader.load('slavka.fbx', (fbx) => {
-                carModel = fbx;
-                carModel.traverse((child) => {
+                const wrapper = new THREE.Group();
+                
+                // Автоматическое центрирование опорной точки (Pivot point)
+                const box = new THREE.Box3().setFromObject(fbx);
+                const center = box.getCenter(new THREE.Vector3());
+                const size = box.getSize(new THREE.Vector3());
+
+                // Сдвигаем FBX в центр обертки
+                fbx.position.x = -center.x;
+                fbx.position.y = -center.y;
+                fbx.position.z = -center.z;
+                
+                wrapper.add(fbx);
+
+                // Авто-подгонка размера: делаем машинку ровно 4.4 метра в длину
+                const maxDim = Math.max(size.x, size.y, size.z);
+                const targetSize = 4.4; 
+                const scale = targetSize / maxDim;
+                wrapper.scale.set(scale, scale, scale);
+
+                fbx.traverse((child) => {
                     if (child.isMesh) {
                         child.castShadow = true;
                         child.receiveShadow = true;
+                        // Если материалы прозрачные или темные
+                        if (child.material) {
+                            if (Array.isArray(child.material)) {
+                                child.material.forEach(m => m.side = THREE.DoubleSide);
+                            } else {
+                                child.material.side = THREE.DoubleSide;
+                            }
+                        }
                     }
                 });
 
-                // Масштаб уменьшен до 0.0001 (в 150 раз меньше оригинала)
-                carModel.scale.set(0.0001, 0.0001, 0.0001);
-                
+                carModel = wrapper;
                 scene.add(carModel);
                 loadingElement.style.display = 'none';
             }, 
@@ -328,16 +342,16 @@
             const carPos = carModel.position;
 
             if (cameraMode === 0) {
-                const offset = new THREE.Vector3(0, 3, -7).applyQuaternion(carModel.quaternion);
+                const offset = new THREE.Vector3(0, 3, -8).applyQuaternion(carModel.quaternion);
                 camera.position.lerp(carPos.clone().add(offset), 0.1);
                 camera.lookAt(carPos.clone().add(new THREE.Vector3(0, 1, 0)));
             } else if (cameraMode === 1) {
-                const offset = new THREE.Vector3(0, 1.1, 0.2).applyQuaternion(carModel.quaternion);
+                const offset = new THREE.Vector3(0, 1.2, 0.2).applyQuaternion(carModel.quaternion);
                 camera.position.copy(carPos.clone().add(offset));
-                const lookAtOffset = new THREE.Vector3(0, 1.1, 10).applyQuaternion(carModel.quaternion);
+                const lookAtOffset = new THREE.Vector3(0, 1.2, 10).applyQuaternion(carModel.quaternion);
                 camera.lookAt(carPos.clone().add(lookAtOffset));
             } else if (cameraMode === 2) {
-                camera.position.set(carPos.x, carPos.y + 25, carPos.z);
+                camera.position.set(carPos.x, carPos.y + 30, carPos.z);
                 camera.lookAt(carPos);
             }
         }
