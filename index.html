@@ -143,7 +143,7 @@
         function createTrack() {
             // Земля
             const groundMat = new CANNON.Material('groundMaterial');
-            const groundBody = new CANNON.Body({ mass: 0, material: groundMat });
+            groundBody = new CANNON.Body({ mass: 0, material: groundMat });
             groundBody.addShape(new CANNON.Plane());
             groundBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
             world.addBody(groundBody);
@@ -220,7 +220,6 @@
         }
 
         function createFallbackCar() {
-            // Запасная 3D-модель машины на случай ошибки загрузки
             const group = new THREE.Group();
             const bodyMesh = new THREE.Mesh(
                 new THREE.BoxGeometry(2.4, 1.2, 4.4),
@@ -243,7 +242,6 @@
 
         function loadCarModel() {
             const loader = new THREE.FBXLoader();
-            // Загружаем slavka.fbx (без кириллицы)
             loader.load('slavka.fbx', (fbx) => {
                 carModel = fbx;
                 carModel.traverse((child) => {
@@ -253,7 +251,9 @@
                     }
                 });
 
-                carModel.scale.set(0.015, 0.015, 0.015);
+                // Уменьшенный масштаб для адекватных размеров машины
+                carModel.scale.set(0.001, 0.001, 0.001);
+                
                 scene.add(carModel);
                 loadingElement.style.display = 'none';
             }, 
